@@ -1,5 +1,6 @@
 
 use std::env;
+use crate::execution::runners::run_script;
 use std::path::Path;
 use std::process;
 
@@ -7,8 +8,7 @@ mod config;
 mod execution;
 // mod utils; // Removed duplicate module declaration
 
-use crate::utils::find_script;
-use crate::execution::run_script;
+
 
 // Helper function to get the directories for the executable and the module directory
 fn get_directories(program_name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
