@@ -10,23 +10,20 @@ An interactive Rust CLI application that serves as a menu-driven dispatcher for 
 
 ```
 src/
-├── main.rs              # Entry point with interactive menu and command dispatcher
-├── config/              # Application configuration and constants
-│   └── mod.rs           
-├── execution/           
-│   ├── mod.rs           # Module declarations and re-exports
-│   └── runners.rs       # Script discovery and execution logic
+├── main.rs              # Single file containing all application logic
 └── modules/             # Shell scripts directory
     ├── first_module.sh  
     ├── second_module.sh 
     └── third_module.sh  
 ```
 
-### Component Details
+### Simplified Design
 
-- **`main.rs`**: Provides the interactive menu system, handles command-line arguments, and coordinates script execution
-- **`execution/runners.rs`**: Contains `run_script()` and `find_script()` functions for script discovery and execution
-- **`config/`**: Configuration module containing application constants (NAME, etc.)
+- **`main.rs`**: A single, self-contained file that handles:
+  - Interactive menu system with dynamic script discovery
+  - Command-line argument processing
+  - Script execution with proper error handling
+  - All helper functions for path resolution and script running
 - **`src/modules/`**: Directory containing executable shell scripts accessible through the menu
 
 ## Installation & Setup
@@ -134,8 +131,8 @@ cargo clippy -- -D warnings
 ### Direct Execution Workflow
 
 1. **Argument Parsing**: Accepts script name as command-line argument
-2. **Script Discovery**: Uses `find_script()` to locate the script
-3. **Validation**: Verifies script exists and is accessible
+2. **Script Path**: Constructs path by joining module directory with script name
+3. **Validation**: Verifies script exists in `src/modules/`
 4. **Execution**: Runs script using `bash` via `std::process::Command`
 5. **Exit Code**: Propagates script's exit code for shell compatibility
 
@@ -229,17 +226,22 @@ The CLI provides comprehensive error handling:
 
 ## Development Notes
 
-- Interactive menu implemented with Rust's `std::io` for user input
-- Scripts are discovered dynamically and sorted alphabetically
-- Menu automatically adjusts to the number of available scripts
-- Each script's `.sh` extension is removed in the menu display
-- The program maintains a continuous loop until explicit exit
+- **Simplified Architecture**: All logic consolidated into a single `main.rs` file (~150 lines)
+- **Zero Dependencies**: Uses only Rust standard library, no external crates needed
+- **Dynamic Discovery**: Scripts found at runtime by scanning `src/modules/` directory
+- **Clean Code**: Removed unnecessary abstractions and module hierarchies
+- **Interactive Menu**: Implemented with `std::io` for user input
+- **Alphabetical Sorting**: Scripts sorted and mapped to letters for easy selection
+- **Extension Handling**: `.sh` extension removed in menu display for cleaner presentation
+- **Continuous Loop**: Menu persists until explicit exit command
 
 ## Project Benefits
 
+- **Simplicity**: Single file architecture makes the codebase easy to understand and modify
 - **User Experience**: Intuitive menu interface requires no memorization
-- **Separation of Concerns**: Clear division between UI, discovery, and execution
-- **Extensibility**: Easy to add new features or menu options
+- **Minimal Dependencies**: No external crates means faster compilation and fewer security concerns
+- **Maintainability**: All logic in one place reduces cognitive load and debugging time
+- **Extensibility**: Easy to add new features without navigating complex module structures
 - **Error Safety**: Rust's type system prevents runtime errors
 - **Cross-platform**: Works on any system with Rust and Bash support
 - **Zero Configuration**: Works immediately after compilation
