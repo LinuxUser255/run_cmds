@@ -1,34 +1,33 @@
 # run_cmds
 
-A Rust CLI application that serves as a dispatcher for shell scripts. This program allows you to organize and execute shell scripts through a unified command-line interface.
+An interactive Rust CLI application that serves as a menu-driven dispatcher for shell scripts. This program provides an intuitive interface to organize, discover, and execute shell scripts.
 
 ## Overview
 
-`run_cmds` is designed to manage and execute shell scripts stored in the `src/modules/` directory. Instead of running shell scripts directly, you use this Rust CLI to discover, validate, and execute them with proper error handling and exit code propagation.
+`run_cmds` manages and executes shell scripts stored in the `src/modules/` directory through an interactive menu system. When launched without arguments, it presents a clean, formatted menu allowing you to select and run scripts with proper error handling and exit code propagation.
 
 ## Architecture
 
 ```
 src/
-├── main.rs              # Entry point and command dispatcher
-├── execution/
+├── main.rs              # Entry point with interactive menu and command dispatcher
+├── config/              # Application configuration and constants
+│   └── mod.rs           
+├── execution/           
 │   ├── mod.rs           # Module declarations and re-exports
-│   └── runners.rs       # Script execution logic
-├── utils/
-│   ├── mod.rs           # Module declarations
-│   └── paths.rs         # Script discovery and path utilities
-└── modules/
-    ├── first_module.sh  # Example shell script
-    ├── second_module.sh # Example shell script
-    └── third_module.sh  # Example shell script
+│   └── runners.rs       # Script discovery and execution logic
+└── modules/             # Shell scripts directory
+    ├── first_module.sh  
+    ├── second_module.sh 
+    └── third_module.sh  
 ```
 
 ### Component Details
 
-- **`main.rs`**: The primary entry point that handles command-line arguments, provides usage information, and coordinates script execution
-- **`execution/runners.rs`**: Contains the `run_script()` function that executes shell scripts using `bash` and handles process management
-- **`utils/paths.rs`**: Implements `find_script()` to locate scripts in the modules directory
-- **`src/modules/`**: Directory containing executable shell scripts that can be invoked by the CLI
+- **`main.rs`**: Provides the interactive menu system, handles command-line arguments, and coordinates script execution
+- **`execution/runners.rs`**: Contains `run_script()` and `find_script()` functions for script discovery and execution
+- **`config/`**: Configuration module containing application constants (NAME, etc.)
+- **`src/modules/`**: Directory containing executable shell scripts accessible through the menu
 
 ## Installation & Setup
 
@@ -52,20 +51,55 @@ cargo build --release
 
 ## Usage
 
-### Basic Commands
+### Interactive Mode (Default)
+
+Launch the program without arguments to enter the interactive menu:
 
 ```bash
-# Show available scripts and usage information
+# Launch interactive menu
 cargo run
 
-# Execute a specific shell script
-cargo run -- <script_name>
+# Or if installed
+./target/debug/run_cmds
+```
 
-# Examples:
+This displays:
+
+```
+═══════════════════════════════════════════════════════════════════════════════
+
+▶ OPTIONS:
+
+  a) first_module
+  b) second_module
+  c) third_module
+  q) quit | exit
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Select an option: 
+```
+
+Simply type a letter (a, b, c) to run the corresponding script, or 'q' to quit. The menu reappears after each script execution.
+
+### Direct Execution Mode
+
+Bypass the menu and run scripts directly:
+
+```bash
+# Execute specific scripts
 cargo run -- first_module.sh
 cargo run -- second_module.sh
-cargo run -- third_module.sh
+
+# Show help
+cargo run -- --help
+
+# Show about
+cargo run -- --about
 ```
+
+
+
 
 ### Development Commands
 
@@ -82,31 +116,61 @@ cargo fmt
 # Run clippy lints
 cargo clippy -- -D warnings
 
-# Build and run in one step
-cargo run -- <script_name>
 ```
 
 ## How It Works
 
-1. **Argument Parsing**: The CLI accepts a script name as a command-line argument
-2. **Script Discovery**: Uses the `find_script()` function to locate the requested script in `src/modules/`
-3. **Validation**: Checks if the script file exists and is accessible
-4. **Execution**: Runs the script using `bash` through Rust's `std::process::Command`
-5. **Exit Code Propagation**: Returns the script's exit code to maintain proper shell behavior
+### Interactive Mode Workflow
 
-### Example Workflow
+1. **Launch**: Run without arguments to enter interactive mode
+2. **Menu Display**: Automatically scans `src/modules/` for `.sh` files
+3. **Dynamic Mapping**: Scripts are mapped to letters (a, b, c, etc.) alphabetically
+4. **Selection**: User types the corresponding letter
+5. **Execution**: Selected script runs with real-time output
+6. **Feedback**: Shows "Script completed successfully!" or error message
+7. **Loop**: Menu reappears for additional selections
+8. **Exit**: Type 'q', 'quit', or 'exit' to terminate
 
+### Direct Execution Workflow
+
+1. **Argument Parsing**: Accepts script name as command-line argument
+2. **Script Discovery**: Uses `find_script()` to locate the script
+3. **Validation**: Verifies script exists and is accessible
+4. **Execution**: Runs script using `bash` via `std::process::Command`
+5. **Exit Code**: Propagates script's exit code for shell compatibility
+
+### Example Sessions
+
+**Interactive Mode:**
 ```bash
-$ cargo run -- first_module.sh
-    Finished dev [unoptimized + debuginfo] target(s) in 0.00s
-     Running `target/debug/run_cmds first_module.sh`
+$ cargo run
+
+═══════════════════════════════════════════════════════════════════════════════
+
+▶ OPTIONS:
+
+  a) first_module
+  b) second_module
+  c) third_module
+  q) quit | exit
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Select an option: a
+
+Running first_module.sh...
+
 this is the FIRST module
+
+Script completed successfully!
+
+[Menu appears again]
 ```
 
-If a script doesn't exist:
+**Direct Execution:**
 ```bash
-$ cargo run -- nonexistent.sh
-Script 'nonexistent.sh' not found in src/modules
+$ cargo run -- first_module.sh
+this is the FIRST module
 ```
 
 ## Adding New Scripts
@@ -124,9 +188,15 @@ Script 'nonexistent.sh' not found in src/modules
    # Add your commands here
    ```
 
-3. Execute it through the CLI:
-   ```bash
-   cargo run -- my_new_script.sh
+3. The script automatically appears in the menu:
+   ```
+   ▶ OPTIONS:
+   
+     a) first_module
+     b) my_new_script    # New script appears alphabetically
+     c) second_module
+     d) third_module
+     q) quit | exit
    ```
 
 ## Script Requirements
@@ -137,27 +207,42 @@ All shell scripts in `src/modules/` should:
 - Follow standard bash scripting practices
 - Exit with appropriate exit codes (0 for success, non-zero for failure)
 
+## Features
+
+- **Interactive Menu**: User-friendly interface with visual formatting
+- **Dynamic Discovery**: Automatically detects all `.sh` files
+- **Alphabetical Mapping**: Scripts mapped to letters for easy selection
+- **Continuous Operation**: Menu loop for running multiple scripts
+- **Direct Execution**: Command-line argument support to bypass menu
+- **Clean Output**: Well-formatted display with separators and status messages
+- **Error Recovery**: Invalid selections don't crash the program
+- **Exit Code Handling**: Proper propagation of script exit codes
+
 ## Error Handling
 
 The CLI provides comprehensive error handling:
-- **Missing arguments**: Shows usage information and lists available scripts
-- **Script not found**: Clear error message indicating the script doesn't exist
-- **Execution errors**: Propagates the script's exit code and displays execution errors
-- **Permission errors**: Reports if scripts are not executable
+- **Interactive Mode**: Gracefully handles invalid menu selections
+- **Script Not Found**: Clear error message with path information
+- **Execution Errors**: Displays error details and exit codes
+- **Permission Errors**: Reports if scripts are not executable
+- **Empty Directory**: Notifies when no scripts are available
 
 ## Development Notes
 
-- The project uses Rust's module system to organize code into logical components
-- Script execution is handled through `std::process::Command` for better control and error handling
-- The CLI automatically discovers scripts in `src/modules/` and presents them to users
-- Exit codes are properly propagated from executed scripts to maintain shell conventions
+- Interactive menu implemented with Rust's `std::io` for user input
+- Scripts are discovered dynamically and sorted alphabetically
+- Menu automatically adjusts to the number of available scripts
+- Each script's `.sh` extension is removed in the menu display
+- The program maintains a continuous loop until explicit exit
 
-## Project Structure Benefits
+## Project Benefits
 
-- **Separation of Concerns**: Clear division between argument parsing, script discovery, and execution
-- **Extensibility**: Easy to add new script management features
-- **Error Safety**: Rust's type system prevents common runtime errors
+- **User Experience**: Intuitive menu interface requires no memorization
+- **Separation of Concerns**: Clear division between UI, discovery, and execution
+- **Extensibility**: Easy to add new features or menu options
+- **Error Safety**: Rust's type system prevents runtime errors
 - **Cross-platform**: Works on any system with Rust and Bash support
+- **Zero Configuration**: Works immediately after compilation
 
 ## Contributing
 
@@ -166,4 +251,4 @@ When adding new features or modifying existing code:
 2. Format code: `cargo fmt`
 3. Check for lints: `cargo clippy`
 4. Update documentation as needed
-5. Test manually with various script scenarios
+5. Test both interactive and direct execution modes

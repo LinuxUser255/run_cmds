@@ -1,14 +1,12 @@
-
 use std::env;
-use crate::execution::runners::run_script;
+use std::io::{self, Write};
+use crate::execution::runners::{run_script, find_script};
 use std::path::Path;
 use std::process;
 
 mod config;
 mod execution;
-// mod utils; // Removed duplicate module declaration
-
-
+// Shell scripts located in src/modules/
 
 // Helper function to get the directories for the executable and the module directory
 fn get_directories(program_name: &str) -> (std::path::PathBuf, std::path::PathBuf) {
@@ -22,26 +20,22 @@ fn get_directories(program_name: &str) -> (std::path::PathBuf, std::path::PathBu
     (exe_dir, module_dir)
 }
 
-fn print_help_menu() {
-    use crate::config::NAME;
-    let module_dir = Path::new("src/modules");
+fn print_menu(modules: &[String]) {
+    println!("\n═══════════════════════════════════════════════════════════════════════════════\n");
+    println!("▶ OPTIONS:\n");
 
-    println!(
-        r#"
-Usage: {} [script_name]
-═══════════════════════════════════════════════════════════════════════════════
+    for (i, module) in modules.iter().enumerate() {
+        let letter = (b'a' + i as u8) as char;
+        let module_name = module.trim_end_matches(".sh");
+        println!("  {}) {}", letter, module_name);
+    }
+    println!("  q) quit | exit\n");
+    println!("═══════════════════════════════════════════════════════════════════════════════\n");
+}
 
-▶ GENERAL OPTIONS:
-  -a, --about          Show information about {}
-  -h, --help           Show help information
-
-═══════════════════════════════════════════════════════════════════════════════
-"#, NAME, NAME
-    );
-
-    // Retrieve & display available modules
+fn get_available_modules(module_dir: &Path) -> Vec<String> {
     let mut modules = Vec::new();
-    if let Ok(entries) = std::fs::read_dir(&module_dir) {
+    if let Ok(entries) = std::fs::read_dir(module_dir) {
         for entry in entries {
             if let Ok(entry) = entry {
                 if let Some(name) = entry.file_name().to_str() {
@@ -52,16 +46,8 @@ Usage: {} [script_name]
             }
         }
     }
-
-    println!("▶ AVAILABLE MODULES ({} found):", modules.len());
-    if modules.is_empty() {
-        println!("    (no modules found)");
-    } else {
-        for module in &modules {
-            println!("    • {}", module);
-        }
-    }
-    println!();
+    modules.sort();
+    modules
 }
 
 fn print_about() {
@@ -117,25 +103,65 @@ fn handle_run_modules(module_dir: &Path, script_name: &str) -> i32 {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        print_usage_and_exit(&args[0]);
-    }
-
     let (_, module_dir) = get_directories(&args[0]);
 
-    let exit_code = match args[1].as_str() {
-        "--help" | "-h" => {
-            print_help_menu();
-            0
-        }
-        "--about" | "-a" => {
-            print_about();
-            0
-        }
-        script_name => handle_run_modules(&module_dir, script_name)
-    };
+    // If arguments provided, handle them
+    if args.len() >= 2 {
+        let exit_code = match args[1].as_str() {
+            "--help" | "-h" => {
+                print_usage_and_exit(&args[0]);
+                0
+            }
+            "--about" | "-a" => {
+                print_about();
+                0
+            }
+            script_name => handle_run_modules(&module_dir, script_name)
+        };
+        process::exit(exit_code);
+    }
 
-    process::exit(exit_code);
+    // No arguments - show interactive menu
+    let modules = get_available_modules(&module_dir);
+
+    if modules.is_empty() {
+        eprintln!("No modules found in {}", module_dir.display());
+        process::exit(1);
+    }
+
+    loop {
+        print_menu(&modules);
+        print!("Select an option: ");
+        io::stdout().flush().unwrap();
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        let choice = input.trim().to_lowercase();
+
+        if choice == "q" || choice == "quit" || choice == "exit" {
+            println!("Exiting...");
+            process::exit(0);
+        }
+
+        // Check if it's a letter option (a, b, c, etc.)
+        if choice.len() == 1 {
+            if let Some(first_char) = choice.chars().next() {
+                if first_char.is_ascii_lowercase() {
+                    let index = (first_char as usize) - ('a' as usize);
+                    if index < modules.len() {
+                        let script_name = &modules[index];
+                        println!("\nRunning {}...\n", script_name);
+                        let exit_code = handle_run_modules(&module_dir, script_name);
+                        if exit_code == 0 {
+                            println!("\nScript completed successfully!");
+                        }
+                        continue;
+                    }
+                }
+            }
+        }
+
+        println!("Invalid option. Please try again.");
+    }
 }
 
